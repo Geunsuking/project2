@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" 
+                  xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/css/top_rate.css">
+    <link rel="stylesheet" href="/css/now_playing.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/footer.css">
+    <link rel="stylesheet" href="/css/header.css">
+    <title>영화 정보 보기</title>
+</head>
+<body>
+	<!--익명사용자(비로그인상태)isAnonymous() -->
+	<!--사용자(로그인상태)isAuthenticated() -->
+	
+	<div id ="header" th:fragment = "header">
+			<div sec:authorize="isAuthenticated()">
+			    안녕하세요, 
+			    <span sec:authorize="hasRole('ROLE_ADMIN')">
+			        관리자 (<span sec:authentication="principal.nickname"></span>)님!
+			        <b><a href="/AdminPage">관리자 페이지</a></b>
+			      	
+			    </span>
+			    <span sec:authorize="!hasRole('ROLE_ADMIN')">
+			        <span sec:authentication="principal.nickname"></span>님!
+			    </span>
+			</div>
+			
+			<div class ="userIndex" sec:authorize="isAnonymous()">
+				<a href = "/UserLoginForm">로그인</a>
+			</div>
+			
+			<div class ="userIndex"  sec:authorize="isAuthenticated()">
+				<a href = "/UserMypage">내정보</a>
+				<a href = "/logout">로그아웃</a>
+			</div>
+			
+    <div>
+     <form action ="/searchMovies" method ="get"> 
+    영화 검색 : <input type ="text" id = 'movieSearch' name = "movieSearch" placeholder="영화 제목을 입력하세요">
+    <button type = "submit">검색</button>
+</form>
+    </div>
+
+	</div>
+	
+	
+<div id = "indexMovieList">
+  	 <!-- 개봉중인 영화  -->
+	 <div class="slider-container2">
+  		 	<h1><a href ="/MoviesList">현재상영중</a></h1>
+		    <button id="prev-btn2" class="nav-btn2">&lt;</button> 
+		  	  <div id="movie-list2"></div>
+		    <button id="next-btn2" class="nav-btn2">&gt;</button> 
+	 </div>
+ 	 <div id="loading-indicator2">데이터를 불러오는 중...</div>
+     	
+	  <!--최고평점-->
+	  <div class="slider-container">
+	  		<h1><a href ="/TopRate">최고평점</a></h1>
+		    <button id="prev-btn" class="nav-btn">&lt;</button> 
+		    	<div id="movie-list"></div>
+		    <button id="next-btn" class="nav-btn">&gt;</button> 
+	  </div>
+	  <div id="loading-indicator">데이터를 불러오는 중...</div>
+  		<hr>
+	 
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. 필요한 HTML 요소 가져오기
+    const searchForm = document.querySelector('#header form');
+    const movieSearchInput = document.getElementById('movieSearch');
+    // 검색 결과를 동적으로 표시할 영역을 가정하여 추가 (예: 영화 목록을 표시하는 div)
+    const movieContainer = document.getElementById('indexMovieList'); 
+
+    // 2. 검색 폼 제출 이벤트 리스너 추가
+    searchForm.addEventListener('submit', function(event) {
+        event.preventDefault(); // 폼의 기본 제출(페이지 이동) 동작을 막습니다.
+        
+        const searchQuery = movieSearchInput.value.trim();
+        
+        if (searchQuery.length === 0) {
+            alert('검색어를 입력해 주세요.');
+            movieSearchInput.focus();
+            return;
+        }
+
+        // 검색 API 엔드포인트와 쿼리 문자열 생성
+        // 서버에서는 이 URL(/searchMovies?movieSearch=검색어)을 받아 처리해야 합니다.
+        const searchUrl = `/searchMovies?movieSearch=${encodeURIComponent(searchQuery)}`;
+        
+        // 검색 결과를 표시하는 함수 호출
+        fetchMovies(searchUrl, searchQuery);
+    });
+
+    // 3. 영화 데이터를 가져와서 표시하는 비동기 함수
+    async function fetchMovies(url, query) {
+        // 로딩 상태 표시
+        movieContainer.innerHTML = `<p id="loading-message">"${query}"에 대한 검색 결과를 불러오는 중...</p>`;
+        
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                // HTTP 상태 코드 400, 500 등 오류 처리
+                throw new Error(`검색 실패: ${response.status} ${response.statusText}`);
+            }
+            
+            // 서버가 JSON 형식으로 영화 목록을 응답한다고 가정합니다.
+            const movies = await response.json(); 
+            
+            // 검색 결과를 화면에 렌더링
+            displaySearchResults(movies, query);
+
+        } catch (error) {
+            console.error('영화 검색 중 오류 발생:', error);
+            movieContainer.innerHTML = '<p style="color: red;">영화 검색에 실패했습니다. 서버 상태를 확인해 주세요.</p>';
+        }
+    }
+
+    // 4. 검색 결과를 HTML로 만들어 표시하는 함수
+    function displaySearchResults(movies, query) {
+        movieContainer.innerHTML = ''; // 기존 콘텐츠 지우기
+        
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'search-results-container';
+        
+        let htmlContent = `<h1>'${query}' 검색 결과 (${movies.length}건)</h1>`;
+        
+        if (movies.length === 0) {
+            htmlContent += '<p>일치하는 영화를 찾을 수 없습니다.</p>';
+        } else {
+            // 실제 영화 정보를 표시하는 카드나 목록을 여기에 생성합니다.
+            htmlContent += '<div class="movie-grid">';
+            movies.forEach(movie => {
+                // TODO: movie 객체의 실제 속성에 맞게 수정하세요 (예: movie.title, movie.posterPath)
+                const posterUrl = movie.posterPath || 'default-poster.jpg'; 
+                htmlContent += `
+                    <div class="movie-card">
+                        <img src="${posterUrl}" alt="${movie.title}" style="width: 100px; height: 150px; object-fit: cover;">
+                        <p>${movie.title}</p>
+                        <p>평점: ${movie.voteAverage || 'N/A'}</p>
+                    </div>
+                `;
+            });
+            htmlContent += '</div>';
+        }
+
+        resultDiv.innerHTML = htmlContent;
+        movieContainer.appendChild(resultDiv);
+    }
+});
+</script>
+	 <!-- -----------------------푸터--------------------------- -->
+	 <div id = "footer" th:fragment = "footer">
+	 	 <p><strong>ReviewPlus</strong></p>
+        <p>리뷰플러스에서 사용된 모든 영화 정보는 
+           <span style ="font-size:15px; font-weight:bold" >
+      				<a href ="https://www.themoviedb.org/">
+      						TMDb(The Movie Database)
+      				</a>
+			</span> 통해 제공되었습니다.
+        </p>
+        <p>주소:못골번영로 56번길 8<br>© 2025 ReviewPlus.All Rights Reserved.</p>
+	 </div>
+	 
+	 <!-- --------------------------------------------------------------------- -->
+	 
+ <!--영화 슬라이더 -->
+ <script src="js/now_playing.js" type="module"></script>
+ <script src="js/top_rate.js" type="module"></script>
+ 
+</body>
+</html>

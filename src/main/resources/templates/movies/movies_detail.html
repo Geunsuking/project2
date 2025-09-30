@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" 
+                  xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>영화리뷰하기</title>
+    <link rel="stylesheet" href="/css/movies_detail.css">
+    <link rel="stylesheet" href="/css/footer.css">
+    <link rel="stylesheet" href="/css/header.css">
+
+</head>
+
+<body>
+
+	<!-- 헤더 -->
+	<div th:insert = "index/index :: header"></div>
+						
+						
+		<!-- 영화 상세 정보 -->
+	    <div id="movie-detail-container">
+	        <p>상세정보 불러오는중</p>
+	    </div>
+	    
+   				<b>영화별점:</b>
+				<div>
+				    <span data-rating="1">★</span>
+				    <span data-rating="2">★</span>
+				    <span data-rating="3">★</span>
+				    <span data-rating="4">★</span>
+				    <span data-rating="5">★</span>
+				</div>
+				
+				<div>
+			    <button 
+			        id="likeButton"
+			        th:data-api-id="${apiId}" 
+			        th:data-liked="${isLiked}" th:classappend = "${isLiked} ? 'liked' : ''"
+			        th:text = "${isLiked} ? '♥ 좋아요 취소' : '♡ 좋아요 하기'"
+			        onclick = "toggleLike(this)"
+			        class="like-btn">
+			    </button>
+			</div>
+						
+						
+	<!-- 영화 리뷰  -->				
+	 <div sec:authorize="isAuthenticated()">
+		<form id="review-form"> 
+			    <h3>영화 리뷰 목록</h3>
+			    닉네임 : <span sec:authentication="principal.nickname" id = "nickname"></span><br>
+			    평가   : <textarea rows = "5" cols = "30" name="comment"></textarea><br>
+			    평점:	<div class="rating-area">
+			                <span class="star" data-rating="1">★</span>
+			                <span class="star" data-rating="2">★</span>
+			                <span class="star" data-rating="3">★</span>
+			                <span class="star" data-rating="4">★</span>
+			                <span class="star" data-rating="5">★</span>
+			            </div>
+			            <input type="hidden" id="apiId" name="apiId" th:value="${apiId}"> 
+			            <input type="hidden" id="selected-rating" name="rating" value="0">
+			    <button type="button" id="submit-review-btn">리뷰 등록</button> 
+			</form>
+	 </div>      
+<hr>
+
+<h3>등록된 리뷰</h3>
+<div id="review-list">
+    
+    <div th:if="${reviews == null or reviews.isEmpty()}">
+        <p>아직 등록된 리뷰가 없습니다.</p>
+    </div>
+    
+        <div th:each="review : ${reviews}" id = "reviews">
+            <p>
+                <strong>작성자:</strong> 
+                <span th:if="${review.userEntity != null}" 
+                      th:text="${review.userEntity.nickname}">닉네임</span>
+                <span th:if="${review.userEntity == null}">탈퇴한 사용자</span>
+            </p>
+            <table>
+                <tr>
+                    <td id = "reviewsRating">
+                        <strong>별점:</strong> 
+                        <span th:if="${review.rating != null}" 
+                        th:text="${#strings.repeat('★', review.rating)}"></span> 
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <p style="margin: 0;" th:text="${review.comment}">리뷰 내용</p>
+                    </td>
+				</tr>
+            </table>
+            <p id="reviewsRegdate">
+                작성일: <span th:if="${review.regDate != null}" 
+                              th:text="${#temporals.format(review.regDate, 'yyyy-MM-dd HH:mm')}">2025-01-01 00:00</span>
+            </p>
+        </div>
+</div>
+
+
+
+<!-- index/index 파일에 있는 "footer" 태그조각를 가져옴  -->
+<div th:insert="index/index :: footer"></div>
+
+
+
+<script>
+	async function toggleLike(buttonElement){
+		//버튼에서 영화ID와 현재 상태를 가져옴
+		const apiId = buttonElement.getAttribute('data-api-id');
+		const isCurrentlyLiked = buttonElement.getAttribute('data-liked') === 'true';
+		
+		//좋아요 API URL 설정
+		const url = `/api/MovieLike/${apiId}`;
+		
+		try{
+			const response = await fetch(url,{
+				method : 'POST',
+				headers: {
+					'Content-Type' : 'application/json'
+					
+				},
+			});
+			
+			if(response.ok){
+				//서버응답(좋아요 상태:true/false) 받기
+				const isLiked = await response.json();
+				//HTML 요소(버튼)의 상태 업데이트(사용자 피드백)
+				updateLikeBtnState(buttonElement, isLiked);
+			}else if(response.status === 401){
+				//비로그인 사용자 처리
+				alert("로그인 후 이용가능합니다.");
+				window.location.href = '/login' //로그인 페이지로 리다이렉트
+			}else {
+				alert("오류발생");
+				console.error("좋아요 API 오류:" , response.status);
+				
+			}
+		}catch(error){
+			console.error("네트워크 오류:", error);
+			alert("서버 연결 실패.");
+		}
+	}
+	
+	//버튼 상태 변경
+	function updateLikeBtnState(buttonElement, isLiked){
+		//data-liked 속성 값 변경
+		buttonElement.setAttribute('data-liked', isLiked);
+		
+		if(isLiked){
+			//좋아요 상태: 하트와 '취소' 텍스트로 변경
+			buttonElement.innerHTML = '♥ 좋아요 취소';
+			buttonElement.classList.add ('liked');// CSS 클래스 추가
+		}else {
+			//취소 상태: 빈 하트 '하기' 텍스트로 변경
+			buttonElement.innerHTML = '♡ 좋아요 하기';
+			buttonElement.classList.remove('liked'); //CSS 클래스 제거
+		}
+	}
+</script>
+
+
+<!-- 리뷰.js  -->
+<script src ="/js/movies_review.js"></script>
+
+<!-- 영화상세정보.js -->
+<script src="/js/movies_detail.js"></script>
+</body>
+</html>

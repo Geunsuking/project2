@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" 
+                  xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>영화리뷰하기</title>
+    <link rel="stylesheet" href="/css/movies_list.css">
+    <link rel="stylesheet" href="/css/footer.css">
+    <link rel="stylesheet" href="/css/header.css">
+    <link rel="stylesheet" href="/css/index.css">
+</head>
+<style>
+	#movie-categories-select{
+		margin: 0 auto;
+		max-width:1400px;
+	}
+</style>
+
+
+<body>
+
+<div th:insert = "index/index :: header"></div>
+
+
+<div id = "MovieList">
+		<!-- 영화 선택 카테고리  -->
+		<div id="movie-categories-select" style="margin-bottom: 20px;">
+		    <label for="category-select">카테고리 선택:</label>
+		    <select id="category-select">
+		        <option value="now_playing" selected>현재상영중</option>
+		        <option value="popular">인기순</option>
+		        <option value="top_rated">최고평점</option>
+		        <option value="upcoming">개봉예정</option>
+		        </select>
+		</div>
+		
+		
+	 <div id="movie-list2"></div>
+		<div id="loading-indicator2">
+		    영화 로드 중...
+		</div>
+</div>	
+		
+	<!-- index/index 파일에 있는 "footer" 태그를 가져옴  -->
+	<div th:insert="index/index :: footer"></div>		
+		
+ <script src ="/js/movies_list.js"></script>
+ 
+ 
+</body>
+</html>
